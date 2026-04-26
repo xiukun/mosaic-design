@@ -1,22 +1,28 @@
-import { useState, useEffect } from 'react';
-import { calculateGridLayout, GridItem, LayoutOptions } from '../utils/layoutAlgorithms';
+import { useCallback } from 'react';
+import { useApp } from '../context/AppContext';
+import { calculateGridLayout } from '../utils/layoutAlgorithms';
 
-export interface UseGridLayoutOptions extends LayoutOptions {
-  items: Array<{ id: string; width: number; height: number }>;
-}
+export const useGridLayout = () => {
+  const { state, applyLayout } = useApp();
 
-export function useGridLayout(options: UseGridLayoutOptions) {
-  const [layout, setLayout] = useState<GridItem[]>([]);
-  
-  useEffect(() => {
-    const newLayout = calculateGridLayout(options.items, {
-      containerWidth: options.containerWidth,
-      gap: options.gap,
-      algorithm: options.algorithm,
-      columns: options.columns
+  const applyGridLayout = useCallback(() => {
+    if (state.images.length === 0) return;
+
+    const { width, height } = state.canvasConfig;
+    const { gridRows = 2, gridCols = 2, spacing = 10 } = state.layoutConfig;
+
+    const layoutImages = calculateGridLayout(state.images, {
+      width,
+      height,
+      rows: gridRows,
+      cols: gridCols,
+      spacing,
     });
-    setLayout(newLayout);
-  }, [options]);
-  
-  return layout;
+
+    applyLayout(layoutImages);
+  }, [state, applyLayout]);
+
+  return {
+    applyGridLayout,
+  };
 }

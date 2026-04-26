@@ -1,32 +1,30 @@
-import React, { useContext } from 'react';
-import { AppContext } from '../../context/AppContext';
+import React from 'react';
 import { useExport } from '../../hooks/useExport';
 
 const Toolbar: React.FC = () => {
-  const { canvasRef } = useContext(AppContext);
-  const { exportAsPNG, exportAsJPG } = useExport();
-
-  const handleExportPNG = () => {
-    if (canvasRef.current) {
-      exportAsPNG(canvasRef.current);
-    }
-  };
-
-  const handleExportJPG = () => {
-    if (canvasRef.current) {
-      exportAsJPG(canvasRef.current);
-    }
-  };
+  const { exportAsImage } = useExport();
 
   return (
-    <div className="toolbar">
-      <h2>工具栏</h2>
-      <div className="toolbar-buttons">
-        <button onClick={handleExportPNG} className="export-button">
-          导出为 PNG
+    <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="text-2xl">🎨</div>
+        <h1 className="text-xl font-bold text-slate-800">拼接图设计器</h1>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => exportAsImage('png')}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <span>📥</span>
+          <span>导出 PNG</span>
         </button>
-        <button onClick={handleExportJPG} className="export-button">
-          导出为 JPG
+        <button
+          onClick={() => exportAsImage('jpeg', 0.9)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <span>📤</span>
+          <span>导出 JPG</span>
         </button>
       </div>
     </div>

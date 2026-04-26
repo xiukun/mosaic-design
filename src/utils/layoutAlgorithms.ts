@@ -1,98 +1,121 @@
-export interface GridItem {
-  id: string;
+import { ImageItem } from '../types';
+
+export interface GridLayoutOptions {
   width: number;
   height: number;
-  x: number;
-  y: number;
+  rows: number;
+  cols: number;
+  spacing: number;
 }
 
-export interface LayoutOptions {
-  containerWidth: number;
-  gap: number;
-  algorithm?: 'fixed-columns' | 'dynamic';
-  columns?: number;
+export interface MosaicLayoutOptions {
+  width: number;
+  height: number;
+  spacing: number;
 }
 
-export function calculateGridLayout(
-  items: Array<{ id: string; width: number; height: number }>,
-  options: LayoutOptions
-): GridItem[] {
-  const { containerWidth, gap, algorithm = 'fixed-columns', columns = 3 } = options;
-  
-  if (algorithm === 'fixed-columns') {
-    return calculateFixedColumnsLayout(items, containerWidth, gap, columns);
-  } else {
-    return calculateDynamicLayout(items, containerWidth, gap);
-  }
-}
+export const calculateGridLayout = (
+  images: ImageItem[],
+  options: GridLayoutOptions
+): ImageItem[] => {
+  const { width, height, rows, cols, spacing } = options;
+  const totalSpacingX = (cols - 1) * spacing;
+  const totalSpacingY = (rows - 1) * spacing;
+  const cellWidth = (width - totalSpacingX) / cols;
+  const cellHeight = (height - totalSpacingY) / rows;
 
-function calculateFixedColumnsLayout(
-  items: Array<{ id: string; width: number; height: number }>,
-  containerWidth: number,
-  gap: number,
-  columns: number
-): GridItem[] {
-  const columnWidth = (containerWidth - (columns - 1) * gap) / columns;
-  const result: GridItem[] = [];
-  const columnHeights = new Array(columns).fill(0);
-  
-  items.forEach((item) => {
-    // 找到高度最小的列
-    let minHeight = Infinity;
-    let minColumn = 0;
+  return images.map((img, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
     
-    for (let i = 0; i < columns; i++) {
-      if (columnHeights[i] < minHeight) {
-        minHeight = columnHeights[i];
-        minColumn = i;
+    if (row >= rows || col >= cols) return img;
+
+    const x = col * (cellWidth + spacing);
+    const y = row * (cellHeight + spacing);
+
+    const imgRatio = img.width / img.height;
+    const cellRatio = cellWidth / cellHeight;
+
+    let scaleWidth, scaleHeight;
+    if (imgRatio > cellRatio) {
+      scaleWidth = cellWidth;
+      scaleHeight = cellWidth / imgRatio;
+    } else {
+      scaleHeight = cellHeight;
+      scaleWidth = cellHeight * imgRatio;
+    }
+
+    const offsetX = (cellWidth - scaleWidth) / 2;
+    const offsetY = (cellHeight - scaleHeight) / 2;
+
+    return {
+      ...img,
+      x: x + offsetX,
+      y: y + offsetY,
+      scale: Math.min(scaleWidth / img.width, scaleHeight / img.height),
+    };
+  });
+};
+
+export const calculateMosaicLayout = (
+  images: ImageItem[],
+  options: MosaicLayoutOptions
+): ImageItem[] => {
+  const { width, height, spacing } = options;
+  const result = [...images];
+  const usedAreas: { x: number; y: number; w: number; h: number }[] = [];
+
+  const tryPlace = (x: number, y: number, w: number, h: number): boolean => {
+    if (x + w > width || y + h > height) return false;
+    for (const area of usedAreas) {
+      if (x < area.x + area.w && x + w > area.x && y < area.y + area.h && y + h > area.y) {
+        return false;
       }
     }
-    
-    const x = minColumn * (columnWidth + gap);
-    const y = minHeight;
-    
-    result.push({
-      id: item.id,
-      width: columnWidth,
-      height: item.height,
-      x,
-      y
-    });
-    
-    columnHeights[minColumn] = y + item.height + gap;
-  });
-  
-  return result;
-}
+    return true;
+  };
 
-function calculateDynamicLayout(
-  items: Array<{ id: string; width: number; height: number }>,
-  containerWidth: number,
-  gap: number
-): GridItem[] {
-  const result: GridItem[] = [];
-  let currentX = 0;
-  let currentY = 0;
-  let rowHeight = 0;
-  
-  items.forEach((item) => {
-    if (currentX + item.width > containerWidth) {
-      currentX = 0;
-      currentY += rowHeight + gap;
-      rowHeight = 0;
+  const sortedImages = [...images].sort((a, b) => (b.width * b.height) - (a.width * a.height));
+
+  for (const img of sortedImages) {
+    const maxSize = Math.min(width * 0.5, height * 0.5);
+    const scale = Math.min(maxSize / img.width, maxSize / img.height);
+    const imgW = img.width * scale;
+    const imgH = img.height * scale;
+
+    let placed = false;
+    for (let x = spacing; x < width - imgW - spacing && !placed; x += 20) {
+      for (let y = spacing; y < height - imgH - spacing && !placed; y += 20) {
+        if (tryPlace(x, y, imgW, imgH)) {
+          const index = result.findIndex(i => i.id === img.id);
+          if (index !== -1) {
+            result[index] = {
+              ...result[index],
+              x,
+              y,
+              scale,
+            };
+          }
+          usedAreas.push({ x, y, w: imgW, h: imgH });
+          placed = true;
+        }
+      }
     }
-    
-    result.push({
-      id: item.id,
-      width: item.width,
-      height: item.height,
-      x: currentX,
-      y: currentY
-    });
-    
-    currentX += item.width + gap;
-    rowHeight = Math.max(rowHeight, item.height);
-  });
-  
+
+    if (!placed) {
+      const randX = spacing + Math.random() * (width - imgW - spacing * 2);
+      const randY = spacing + Math.random() * (height - imgH - spacing * 2);
+      const index = result.findIndex(i => i.id === img.id);
+      if (index !== -1) {
+        result[index] = {
+          ...result[index],
+          x: randX,
+          y: randY,
+          scale,
+        };
+      }
+    }
+  }
+
   return result;
-}
+};

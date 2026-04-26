@@ -1,1 +1,1 @@
-export { PlatformSelector, type PlatformType, type PlatformSelectorProps } from './PlatformSelector';
+export { default } from './PlatformSelector';

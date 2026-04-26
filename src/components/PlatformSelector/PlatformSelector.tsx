@@ -1,118 +1,62 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { useApp } from '../../context/AppContext';
+import { PLATFORM_PRESETS } from '../../utils/constants';
 
-export type PlatformType = 'xiaohongshu' | 'douyin' | 'custom';
+const PlatformSelector: React.FC = () => {
+  const { state, setCanvasConfig } = useApp();
 
-export interface PlatformSelectorProps {
-  platform: PlatformType;
-  setPlatform: (platform: PlatformType) => void;
-  canvasWidth: number;
-  setCanvasWidth: (width: number) => void;
-  canvasHeight: number;
-  setCanvasHeight: (height: number) => void;
-  className?: string;
-}
-
-export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
-  platform,
-  setPlatform,
-  canvasWidth,
-  setCanvasWidth,
-  canvasHeight,
-  setCanvasHeight,
-  className,
-}) => {
-  const platformPresets = {
-    xiaohongshu: { width: 1080, height: 1080 },
-    douyin: { width: 1080, height: 1920 },
-  };
-
-  const handlePlatformChange = (newPlatform: PlatformType) => {
-    setPlatform(newPlatform);
-    if (newPlatform in platformPresets) {
-      const { width, height } = platformPresets[newPlatform as keyof typeof platformPresets];
-      setCanvasWidth(width);
-      setCanvasHeight(height);
-    }
+  const handlePresetSelect = (width: number, height: number) => {
+    setCanvasConfig({ width, height });
   };
 
   return (
-    <div className={cn('space-y-6', className)}>
-      <div>
-        <h3 className="text-sm font-medium mb-3">平台选择</h3>
-        <div className="flex space-x-2">
+    <div className="card p-4 mb-4">
+      <h3 className="font-semibold text-slate-700 mb-3">平台预设</h3>
+      
+      <div className="space-y-2 mb-4">
+        {PLATFORM_PRESETS.map((preset) => (
           <button
-            type="button"
-            className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              platform === 'xiaohongshu'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80'
-            )}
-            onClick={() => handlePlatformChange('xiaohongshu')}
+            key={preset.name}
+            onClick={() => handlePresetSelect(preset.width, preset.height)}
+            className={`
+              w-full p-3 rounded-lg text-left transition-all flex items-center gap-3
+              ${state.canvasConfig.width === preset.width && state.canvasConfig.height === preset.height
+                ? 'bg-primary-50 border-2 border-primary-500'
+                : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'}
+            `}
           >
-            小红书
+            <span className="text-2xl">{preset.icon}</span>
+            <div>
+              <div className="font-medium text-slate-700">{preset.name}</div>
+              <div className="text-sm text-slate-500">{preset.width} × {preset.height}</div>
+            </div>
           </button>
-          <button
-            type="button"
-            className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              platform === 'douyin'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80'
-            )}
-            onClick={() => handlePlatformChange('douyin')}
-          >
-            抖音
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              platform === 'custom'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80'
-            )}
-            onClick={() => handlePlatformChange('custom')}
-          >
-            自定义
-          </button>
-        </div>
+        ))}
       </div>
 
-      <div>
-        <h3 className="text-sm font-medium mb-3">画布尺寸</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block text-sm text-muted-foreground">宽度 (px)</label>
+      <div className="border-t border-slate-100 pt-4">
+        <h4 className="text-sm font-medium text-slate-600 mb-3">自定义尺寸</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">宽度</label>
             <input
               type="number"
-              min="100"
+              min="200"
               max="4000"
-              value={canvasWidth}
-              onChange={(e) => {
-                setCanvasWidth(Number(e.target.value));
-                if (platform !== 'custom') {
-                  setPlatform('custom');
-                }
-              }}
-              className="w-full px-3 py-2 border border-muted rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              value={state.canvasConfig.width}
+              onChange={(e) => setCanvasConfig({ width: parseInt(e.target.value) || 1080 })}
+              className="input"
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm text-muted-foreground">高度 (px)</label>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">高度</label>
             <input
               type="number"
-              min="100"
+              min="200"
               max="4000"
-              value={canvasHeight}
-              onChange={(e) => {
-                setCanvasHeight(Number(e.target.value));
-                if (platform !== 'custom') {
-                  setPlatform('custom');
-                }
-              }}
-              className="w-full px-3 py-2 border border-muted rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              value={state.canvasConfig.height}
+              onChange={(e) => setCanvasConfig({ height: parseInt(e.target.value) || 1080 })}
+              className="input"
             />
           </div>
         </div>
@@ -120,3 +64,5 @@ export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
     </div>
   );
 };
+
+export default PlatformSelector;

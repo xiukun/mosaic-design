@@ -1,68 +1,51 @@
-import { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 
-function useImageUpload() {
+export const useImageUpload = () => {
   const { addImage } = useApp();
+  const [isDragging, setIsDragging] = useState(false);
 
-  const processFile = useCallback((file: File) => {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          resolve(e.target.result as string);
-        } else {
-          reject(new Error('Failed to read file'));
-        }
-      };
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-      reader.readAsDataURL(file);
-    });
-  }, []);
-
-  const handleFiles = useCallback(async (files: FileList) => {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        try {
-          const src = await processFile(file);
-          addImage({
-            src,
-            x: 50 + Math.random() * 200,
-            y: 50 + Math.random() * 200,
-            width: 200,
-            height: 200,
-            rotation: 0,
-          });
-        } catch (error) {
-          console.error('Error processing image:', error);
-        }
-      }
+  const processFile = React.useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      console.warn('Only image files are supported');
+      return;
     }
-  }, [processFile, addImage]);
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        addImage(file, img.src, img.width, img.height);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, [addImage]);
+
+  const handleFiles = React.useCallback((files: FileList) => {
+    Array.from(files).forEach(processFile);
+  }, [processFile]);
+
+  const handleDrop = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
+    setIsDragging(false);
+    handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  const handleDragLeave = React.useCallback(() => {
+    setIsDragging(false);
   }, []);
 
   return {
-    handleFiles,
+    isDragging,
     handleDrop,
     handleDragOver,
     handleDragLeave,
+    handleFiles,
   };
-}
-
-export default useImageUpload;
+};

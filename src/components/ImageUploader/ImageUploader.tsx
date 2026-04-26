@@ -1,124 +1,72 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useRef } from 'react';
+import { useApp } from '../../context/AppContext';
+import { useImageUpload } from '../../hooks/useImageUpload';
 
-export interface ImageUploaderProps {
-  images: string[];
-  setImages: (images: string[]) => void;
-  className?: string;
-}
-
-export const ImageUploader: React.FC<ImageUploaderProps> = ({
-  images,
-  setImages,
-  className,
-}) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  }, []);
-
-  const handleFiles = (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-    
-    imageFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setImages((prev) => [...prev, result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+const ImageUploader: React.FC = () => {
+  const { state, removeImage } = useApp();
+  const { isDragging, handleDrop, handleDragOver, handleDragLeave, handleFiles } = useImageUpload();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    handleFiles(files);
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleClick = () => {
-    fileInputRef.current?.click();
+    if (e.target.files) {
+      handleFiles(e.target.files);
+    }
   };
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className="p-4">
       <div
-        className={cn(
-          'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200',
-          isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-muted hover:border-primary hover:bg-primary/5'
-        )}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onClick={handleClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onClick={() => fileInputRef.current?.click()}
+        className={`
+          border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+          ${isDragging 
+            ? 'border-primary-500 bg-primary-50' 
+            : 'border-slate-200 hover:border-primary-300 hover:bg-slate-50'}
+        `}
       >
         <input
           ref={fileInputRef}
           type="file"
-          multiple
           accept="image/*"
+          multiple
           className="hidden"
           onChange={handleFileInputChange}
         />
-        <div className="space-y-2">
-          <div className="text-lg font-medium">拖拽图片到此处或点击上传</div>
-          <div className="text-sm text-muted-foreground">支持 JPG、PNG、GIF 等格式</div>
-        </div>
+        <div className="text-4xl mb-2">📷</div>
+        <p className="text-slate-600 font-medium">拖拽图片或点击上传</p>
+        <p className="text-slate-400 text-sm mt-1">支持 JPG, PNG, GIF 格式</p>
       </div>
 
-      {images.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {images.map((image, index) => (
-            <div key={index} className="relative group">
-              <div className="aspect-square rounded-md overflow-hidden border border-muted">
+      {state.images.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-semibold text-slate-700 mb-3">已上传 ({state.images.length})</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {state.images.map((img) => (
+              <div key={img.id} className="relative group">
                 <img
-                  src={image}
-                  alt={`Uploaded image ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  src={img.src}
+                  alt="preview"
+                  className="w-full h-24 object-cover rounded-lg shadow-sm"
                 />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImage(img.id);
+                  }}
+                  className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-sm"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                className="absolute top-2 right-2 p-1 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleRemoveImage(index)}
-              >
-                <X className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+export default ImageUploader;
