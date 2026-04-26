@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "konva": "^9.3.22",
+    "react-konva": "^18.2.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4"
+  }
+}
