@@ -5,7 +5,7 @@ export const useImageUpload = () => {
   const { addImage } = useApp();
   const [isDragging, setIsDragging] = useState(false);
 
-  const processFile = React.useCallback((file: File) => {
+  const processFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
       console.warn('Only image files are supported');
       return;
@@ -22,22 +22,22 @@ export const useImageUpload = () => {
     reader.readAsDataURL(file);
   }, [addImage]);
 
-  const handleFiles = React.useCallback((files: FileList) => {
+  const handleFiles = useCallback((files: FileList) => {
     Array.from(files).forEach(processFile);
   }, [processFile]);
 
-  const handleDrop = React.useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
 
-  const handleDragOver = React.useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   }, []);
 
-  const handleDragLeave = React.useCallback(() => {
+  const handleDragLeave = useCallback(() => {
     setIsDragging(false);
   }, []);
 
