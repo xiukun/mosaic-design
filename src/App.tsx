@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Toolbar from './components/Toolbar';
 import CanvasEditor from './components/CanvasEditor';
 import { LeftSidebar, RightSidebar } from './components/Sidebar';

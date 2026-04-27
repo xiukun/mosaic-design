@@ -1,6 +1,6 @@
 import React from 'react';
 import { useExport } from '../../hooks/useExport';
-import { Download, Image, Palette, Layers } from 'lucide-react';
+import { Download, Image, Layers } from 'lucide-react';
 
 const Toolbar: React.FC = () => {
   const { exportAsImage } = useExport();

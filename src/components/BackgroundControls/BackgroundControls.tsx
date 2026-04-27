@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Palette, Droplets, Radius, Square } from 'lucide-react';
+import { Palette, Droplets, Radius } from 'lucide-react';
 
 const BackgroundControls: React.FC = () => {
   const { state, setCanvasConfig } = useApp();
