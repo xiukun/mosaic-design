@@ -27,6 +27,7 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   gridRows: 2,
   gridCols: 2,
   spacing: 10,
+  borderRadius: 10,
 };
 
 export const LAYOUT_TYPES = [

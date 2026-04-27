@@ -101,23 +101,6 @@ const LayoutSelector: React.FC = () => {
                 className="w-full accent-violet-500"
               />
             </div>
-            <div>
-              <label className="flex items-center justify-between text-xs text-slate-600 mb-2">
-                <span>间距</span>
-                <span className="font-semibold text-slate-800">{state.layoutConfig.spacing}px</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="50"
-                value={state.layoutConfig.spacing}
-                onChange={(e) => {
-                  setLayoutConfig({ spacing: parseInt(e.target.value) || 10 });
-                  setTimeout(applyGridLayout, 0);
-                }}
-                className="w-full accent-violet-500"
-              />
-            </div>
           </div>
         </div>
       )}
@@ -149,6 +132,50 @@ const LayoutSelector: React.FC = () => {
           </div>
         </div>
       )}
+
+      <div className="space-y-4 pt-1">
+        <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
+          <div>
+            <label className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <span>间距</span>
+              <span className="font-semibold text-slate-800">{state.layoutConfig.spacing}px</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={state.layoutConfig.spacing}
+              onChange={(e) => {
+                const newSpacing = Math.max(0, Math.min(100, parseInt(e.target.value) || 10));
+                setLayoutConfig({ spacing: newSpacing });
+                if (state.layoutConfig.type === 'grid') {
+                  setTimeout(applyGridLayout, 0);
+                } else if (state.layoutConfig.type === 'mosaic') {
+                  setTimeout(applyMosaicLayout, 0);
+                }
+              }}
+              className="w-full accent-violet-500"
+            />
+          </div>
+          <div>
+            <label className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <span>圆角</span>
+              <span className="font-semibold text-slate-800">{state.layoutConfig.borderRadius}%</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={state.layoutConfig.borderRadius}
+              onChange={(e) => {
+                const newBorderRadius = Math.max(0, Math.min(100, parseInt(e.target.value) || 10));
+                setLayoutConfig({ borderRadius: newBorderRadius });
+              }}
+              className="w-full accent-violet-500"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

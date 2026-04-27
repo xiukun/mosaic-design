@@ -206,6 +206,11 @@ const CanvasEditor: React.FC = () => {
                   const konvaImg = new window.Image();
                   konvaImg.src = img.src;
                   
+                  // 计算圆角大小：百分比转换成像素值
+                  const borderRadiusPercent = state.layoutConfig.borderRadius || 10;
+                  const maxRadius = Math.min(img.width * img.scale, img.height * img.scale) / 2;
+                  const cornerRadius = (borderRadiusPercent / 100) * maxRadius;
+                  
                   return (
                     <KonvaImage
                       key={img.id}
@@ -224,7 +229,7 @@ const CanvasEditor: React.FC = () => {
                       onClick={(e) => handleImageClick(e, img.id)}
                       onTransformEnd={(e) => handleTransformEnd(e, img.id)}
                       zIndex={img.zIndex || 10} // 确保图片始终在占位符之上
-                      cornerRadius={Math.max(4, Math.min(16, img.scale * 8))}
+                      cornerRadius={cornerRadius}
                     />
                   );
                 })}

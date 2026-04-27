@@ -30,6 +30,7 @@ export interface LayoutConfig {
   gridRows?: number;
   gridCols?: number;
   spacing?: number;
+  borderRadius?: number;
 }
 
 export interface PlatformPreset {
