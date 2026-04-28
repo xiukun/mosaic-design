@@ -9,6 +9,9 @@ export interface ImageItem {
   scale: number;
   rotation: number;
   zIndex: number;
+  placeholderId?: string;
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface CanvasConfig {
@@ -90,6 +93,7 @@ export type AppAction =
   | { type: 'ADD_IMAGE_WITH_POSITION'; payload: ImageItem }
   | { type: 'REMOVE_IMAGE'; payload: string }
   | { type: 'UPDATE_IMAGE'; payload: Partial<ImageItem> & { id: string } }
+  | { type: 'SET_CANVAS_SIZE'; payload: { width: number; height: number } }
   | { type: 'SET_CANVAS_CONFIG'; payload: Partial<CanvasConfig> }
   | { type: 'SET_LAYOUT_CONFIG'; payload: Partial<LayoutConfig> }
   | { type: 'SELECT_IMAGE'; payload: string | null }

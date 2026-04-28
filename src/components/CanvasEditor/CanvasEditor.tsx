@@ -1,18 +1,17 @@
 import React, { useRef, useEffect } from 'react';
-import { Stage, Layer, Rect, Image as KonvaImage, Transformer, Text } from 'react-konva';
+import { Stage, Layer, Rect, Image as KonvaImage, Transformer, Text, Group } from 'react-konva';
 import { useApp } from '../../context/AppContext';
 import { useGridLayout } from '../../hooks/useGridLayout';
 import { getTemplateById } from '../../utils/templates';
 import { ImageUploadUseCase, ImageTransformUseCase } from '../../useCases/imageUseCase';
-import { isImageInPlaceholder } from '../../domain/imageAlignment';
+import ImageToolbar from '../ImageToolbar/ImageToolbar';
 
 const CanvasEditor: React.FC = () => {
-  const { state, updateImage, selectImage, removeImage, addImageWithPosition } = useApp();
+  const { state, updateImage, selectImage, addImageWithPosition } = useApp();
   const { applyGridLayout } = useGridLayout();
   const imageRefs = useRef<{ [key: string]: any }>({});
   const trRef = useRef<any>(null);
   
-  // 初始化用例
   const imageUploadUseCase = new ImageUploadUseCase();
   const imageTransformUseCase = new ImageTransformUseCase();
 
@@ -24,9 +23,14 @@ const CanvasEditor: React.FC = () => {
 
   useEffect(() => {
     if (trRef.current && state.selectedImageId) {
-      const nodes = [imageRefs.current[state.selectedImageId]];
-      trRef.current.nodes(nodes);
-      trRef.current.getLayer()?.batchDraw();
+      const selectedImage = state.images.find(img => img.id === state.selectedImageId);
+      if (selectedImage && !selectedImage.placeholderId) {
+        const nodes = [imageRefs.current[state.selectedImageId]];
+        trRef.current.nodes(nodes);
+        trRef.current.getLayer()?.batchDraw();
+      } else if (trRef.current) {
+        trRef.current.nodes([]);
+      }
     } else if (trRef.current) {
       trRef.current.nodes([]);
     }
@@ -43,7 +47,6 @@ const CanvasEditor: React.FC = () => {
 
   const handleTransformEnd = (e: any, id: string) => {
     const node = e.target;
-    // 使用用例处理图片变换
     const updates = imageTransformUseCase.execute(id, node, state);
     if (Object.keys(updates).length > 0) {
       updateImage(id, updates);
@@ -51,7 +54,6 @@ const CanvasEditor: React.FC = () => {
   };
 
   const handlePlaceholderClick = (placeholderId: string) => {
-    // 触发上传图片的逻辑
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -59,7 +61,6 @@ const CanvasEditor: React.FC = () => {
       const file = e.target.files[0];
       if (file) {
         try {
-          // 使用用例处理图片上传和对齐
           const response = await imageUploadUseCase.execute({
             file,
             placeholderId,
@@ -78,64 +79,114 @@ const CanvasEditor: React.FC = () => {
     input.click();
   };
 
-  const { canvasConfig, images } = state;
-  
-  // 计算容器尺寸，确保有足够的空间
-  const baseWidth = canvasConfig.width;
-  const baseHeight = canvasConfig.height;
-  const containerWidth = Math.min(800, baseWidth * 1.2); // 增加20%的宽度
-  const scale = containerWidth / baseWidth;
-  const containerHeight = baseHeight * scale * 1.2; // 增加20%的高度
+  const handleBoundImageDragMove = (e: any, image: any, placeholder: any) => {
+    const node = e.target;
+    const currentCenterX = node.x();
+    const currentCenterY = node.y();
+    
+    // 计算缩放后的图片尺寸（考虑旋转）
+    const isRotated90or270 = (image.rotation % 180) === 90;
+    const effectiveWidth = isRotated90or270 ? image.height : image.width;
+    const effectiveHeight = isRotated90or270 ? image.width : image.height;
+    const imgWidth = effectiveWidth * image.scale;
+    const imgHeight = effectiveHeight * image.scale;
+    
+    // 计算边界限制：图片中心的可移动范围
+    const minCenterX = placeholder.x + imgWidth / 2;
+    const maxCenterX = placeholder.x + placeholder.width - imgWidth / 2;
+    const minCenterY = placeholder.y + imgHeight / 2;
+    const maxCenterY = placeholder.y + placeholder.height - imgHeight / 2;
 
-  // 获取当前选中模板的占位符
-  const template = state.selectedTemplateId ? getTemplateById(state.selectedTemplateId) : null;
-  const placeholders = template?.placeholders || [];
+    // 应用约束
+    let newCenterX = Math.max(minCenterX, Math.min(maxCenterX, currentCenterX));
+    let newCenterY = Math.max(minCenterY, Math.min(maxCenterY, currentCenterY));
 
-  const handleDeleteImage = () => {
-    if (state.selectedImageId) {
-      removeImage(state.selectedImageId);
+    node.x(newCenterX);
+    node.y(newCenterY);
+  };
+
+  const handleBoundImageDragEnd = (e: any, imageId: string) => {
+    const node = e.target;
+    const image = state.images.find(img => img.id === imageId);
+    if (image && image.placeholderId) {
+      const placeholder = placeholders.find(p => p.id === image.placeholderId);
+      if (placeholder) {
+        // 计算相对于占位符中心的偏移
+        const centerX = placeholder.x + placeholder.width / 2;
+        const centerY = placeholder.y + placeholder.height / 2;
+        const offsetX = node.x() - centerX;
+        const offsetY = node.y() - centerY;
+        updateImage(imageId, { offsetX, offsetY });
+      }
     }
   };
 
+  const handleFreeImageDragEnd = (e: any, imageId: string) => {
+    const node = e.target;
+    const updates = {
+      x: node.x(),
+      y: node.y()
+    };
+    updateImage(imageId, updates);
+  };
+
+  const { canvasConfig, images } = state;
+  
+  const baseWidth = canvasConfig.width;
+  const baseHeight = canvasConfig.height;
+  const containerWidth = Math.min(800, baseWidth * 1.2);
+  const scale = containerWidth / baseWidth;
+  const containerHeight = baseHeight * scale * 1.2;
+
+  const template = state.selectedTemplateId ? getTemplateById(state.selectedTemplateId) : null;
+  const placeholders = template?.placeholders || [];
+
+  const boundImages = images.filter(img => img.placeholderId);
+  const freeImages = images.filter(img => !img.placeholderId);
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-full p-4">
-      <div className="relative w-full max-w-4xl">
-        <div className="absolute -inset-8 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-pink-500/10 rounded-3xl -z-10 blur-2xl" />
-        <div className="bg-white p-6 rounded-3xl shadow-2xl shadow-slate-200/50 ring-1 ring-slate-100">
-          {/* 删除按钮 - 当有图片被选中时显示 */}
-          {state.selectedImageId && (
-            <div className="absolute top-4 right-4 z-50">
-              <button
-                onClick={handleDeleteImage}
-                className="flex items-center justify-center w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors"
-                title="删除图片"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-          
+    <div className="flex flex-col items-center justify-center min-h-full">
+      <div className="relative w-full max-w-5xl">
+        <div className="absolute -inset-12 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-pink-500/10 rounded-3xl -z-10 blur-2xl" />
+        <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 ring-1 ring-slate-100">
           <div className="relative" style={{ 
             width: containerWidth,
             height: containerHeight,
             maxWidth: '100%',
-            maxHeight: '90vh',
+            maxHeight: '85vh',
             overflow: 'auto',
-            padding: '20px'
+            padding: '40px'
           }}>
+            {state.selectedImageId && (() => {
+              const selectedImage = images.find(img => img.id === state.selectedImageId);
+              if (selectedImage) {
+                const placeholder = selectedImage.placeholderId 
+                  ? placeholders.find(p => p.id === selectedImage.placeholderId) 
+                  : null;
+                const renderX = placeholder 
+                  ? placeholder.x + (selectedImage.offsetX || 0) 
+                  : selectedImage.x;
+                const renderY = placeholder 
+                  ? placeholder.y + (selectedImage.offsetY || 0) 
+                  : selectedImage.y;
+                return (
+                  <div style={{ position: 'absolute', zIndex: 100, left: renderX * scale + containerWidth * 0.1, top: renderY * scale + containerHeight * 0.1 }}>
+                    <ImageToolbar image={selectedImage} />
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <Stage
               width={baseWidth * scale}
               height={baseHeight * scale}
               scaleX={scale}
               scaleY={scale}
               onClick={handleStageClick}
-              className="rounded-xl shadow-xl"
+              className="rounded-2xl shadow-2xl"
               overflow="visible"
             >
               <Layer>
-                {/* 画布背景 */}
                 <Rect
                   x={0}
                   y={0}
@@ -153,12 +204,7 @@ const CanvasEditor: React.FC = () => {
                 
                 {/* 渲染占位符 */}
                 {state.selectedTemplateId && placeholders.map((placeholder) => {
-                  // 检查是否有图片已经填充到这个占位符
-                  const hasImage = images.some(img => {
-                    // 使用领域层函数检查图片是否在占位符区域内
-                    return isImageInPlaceholder(img, placeholder);
-                  });
-                  
+                  const hasImage = boundImages.some(img => img.placeholderId === placeholder.id);
                   if (hasImage) return null;
                   
                   return (
@@ -174,7 +220,7 @@ const CanvasEditor: React.FC = () => {
                         dash={[10, 5]}
                         cornerRadius={8}
                         rotation={placeholder.rotation}
-                        zIndex={1} // 占位符始终在最底层
+                        zIndex={1}
                         onClick={(e) => {
                           e.cancelBubble = true;
                           handlePlaceholderClick(placeholder.id);
@@ -191,7 +237,7 @@ const CanvasEditor: React.FC = () => {
                         verticalAlign="middle"
                         offsetX={80}
                         offsetY={8}
-                        zIndex={2} // 文本在占位符之上
+                        zIndex={2}
                         onClick={(e) => {
                           e.cancelBubble = true;
                           handlePlaceholderClick(placeholder.id);
@@ -201,12 +247,67 @@ const CanvasEditor: React.FC = () => {
                   );
                 })}
                 
-                {/* 渲染图片 */}
-                {images.map((img) => {
+                {/* 渲染绑定的图片（带裁剪） */}
+                {state.selectedTemplateId && boundImages.map((img) => {
+                  const placeholder = placeholders.find(p => p.id === img.placeholderId);
+                  if (!placeholder) return null;
+                  
                   const konvaImg = new window.Image();
                   konvaImg.src = img.src;
                   
-                  // 计算圆角大小：百分比转换成像素值
+                  const borderRadiusPercent = state.layoutConfig.borderRadius || 10;
+                  const isRotated90or270 = (img.rotation % 180) === 90;
+                  const scaledWidth = isRotated90or270 ? img.height * img.scale : img.width * img.scale;
+                  const scaledHeight = isRotated90or270 ? img.width * img.scale : img.height * img.scale;
+                  const maxRadius = Math.min(scaledWidth, scaledHeight) / 2;
+                  const cornerRadius = (borderRadiusPercent / 100) * maxRadius;
+                  
+                  // 设置旋转中心为图片中心
+                  const offsetX = img.width / 2;
+                  const offsetY = img.height / 2;
+                  
+                  // 计算图片在裁剪区域内的位置
+                  const imageCenterX = placeholder.x + placeholder.width / 2 + (img.offsetX || 0);
+                  const imageCenterY = placeholder.y + placeholder.height / 2 + (img.offsetY || 0);
+                  
+                  return (
+                    <Group
+                      key={img.id}
+                      clipX={placeholder.x}
+                      clipY={placeholder.y}
+                      clipWidth={placeholder.width}
+                      clipHeight={placeholder.height}
+                    >
+                      <KonvaImage
+                        ref={(node) => {
+                          if (node) imageRefs.current[img.id] = node;
+                        }}
+                        image={konvaImg}
+                        x={imageCenterX}
+                        y={imageCenterY}
+                        width={img.width}
+                        height={img.height}
+                        scaleX={img.scale}
+                        scaleY={img.scale}
+                        rotation={img.rotation}
+                        offsetX={offsetX}
+                        offsetY={offsetY}
+                        draggable={true}
+                        onClick={(e) => handleImageClick(e, img.id)}
+                        onDragMove={(e) => handleBoundImageDragMove(e, img, placeholder)}
+                        onDragEnd={(e) => handleBoundImageDragEnd(e, img.id)}
+                        zIndex={img.zIndex || 10}
+                        cornerRadius={cornerRadius}
+                      />
+                    </Group>
+                  );
+                })}
+                
+                {/* 渲染自由图片 */}
+                {freeImages.map((img) => {
+                  const konvaImg = new window.Image();
+                  konvaImg.src = img.src;
+                  
                   const borderRadiusPercent = state.layoutConfig.borderRadius || 10;
                   const maxRadius = Math.min(img.width * img.scale, img.height * img.scale) / 2;
                   const cornerRadius = (borderRadiusPercent / 100) * maxRadius;
@@ -228,7 +329,8 @@ const CanvasEditor: React.FC = () => {
                       draggable={true}
                       onClick={(e) => handleImageClick(e, img.id)}
                       onTransformEnd={(e) => handleTransformEnd(e, img.id)}
-                      zIndex={img.zIndex || 10} // 确保图片始终在占位符之上
+                      onDragEnd={(e) => handleFreeImageDragEnd(e, img.id)}
+                      zIndex={img.zIndex || 10}
                       cornerRadius={cornerRadius}
                     />
                   );
@@ -250,14 +352,13 @@ const CanvasEditor: React.FC = () => {
         </div>
       </div>
       
-      {/* 空状态提示 */}
       {images.length === 0 && !state.selectedTemplateId && (
-        <div className="mt-8 text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center">
-            <div className="text-3xl">📷</div>
+        <div className="mt-12 text-center">
+          <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center">
+            <div className="text-4xl">📷</div>
           </div>
-          <h3 className="text-lg font-semibold text-slate-700 mb-2">开始设计</h3>
-          <p className="text-slate-500 text-sm">从左侧上传一些图片来创建拼贴图</p>
+          <h3 className="text-xl font-semibold text-slate-700 mb-3">开始设计</h3>
+          <p className="text-slate-500 text-base">从左侧上传一些图片来创建拼贴图</p>
         </div>
       )}
     </div>

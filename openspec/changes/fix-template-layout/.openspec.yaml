@@ -1,0 +1,12 @@
+
+schemaVersion: "1.0"
+id: fix-template-layout
+name: Fix Template Layout
+description: Fix template layout - bind images to placeholders with clipping and drag-to-unbind
+type: change
+status: proposed
+createdAt: "2026-04-28"
+affects:
+  - src/types/index.ts
+  - src/components/CanvasEditor/CanvasEditor.tsx
+  - src/hooks/useTemplateApplication.ts

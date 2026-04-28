@@ -1,12 +1,9 @@
-// 应用层：图片上传和对齐业务逻辑
-
-import { calculateImagePosition, generateImageId } from '../domain/imageAlignment';
+import { generateImageId } from '../domain/imageAlignment';
 import { getTemplateById } from '../utils/templates';
 import { AppState, ImageItem } from '../types';
 
 type Image = ImageItem;
 
-// 图片上传请求
 export interface UploadImageRequest {
   file: File;
   placeholderId: string;
@@ -14,31 +11,38 @@ export interface UploadImageRequest {
   addImageWithPosition: (image: Image) => void;
 }
 
-// 图片上传响应
 export interface UploadImageResponse {
   success: boolean;
   image?: Image;
   error?: string;
 }
 
-/**
- * 处理图片上传和对齐的业务逻辑
- */
+const calculateImageFit = (
+  imageWidth: number,
+  imageHeight: number,
+  placeholderWidth: number,
+  placeholderHeight: number
+) => {
+  const scaleX = placeholderWidth / imageWidth;
+  const scaleY = placeholderHeight / imageHeight;
+  const scale = Math.max(scaleX, scaleY);
+
+  return {
+    scale,
+    offsetX: 0,
+    offsetY: 0,
+  };
+};
+
 export class ImageUploadUseCase {
-  /**
-   * 执行图片上传和对齐
-   */
   async execute(request: UploadImageRequest): Promise<UploadImageResponse> {
     try {
       const { file, placeholderId, state, addImageWithPosition } = request;
 
-      // 读取图片文件
       const src = await this.readFileAsDataURL(file);
-      
-      // 加载图片以获取尺寸
+
       const img = await this.loadImage(src);
 
-      // 获取模板和占位符
       const template = state.selectedTemplateId ? getTemplateById(state.selectedTemplateId) : null;
       const placeholder = template?.placeholders.find(p => p.id === placeholderId);
       
@@ -49,37 +53,31 @@ export class ImageUploadUseCase {
         };
       }
 
-      // 生成唯一的图片ID
       const imageId = generateImageId();
 
-      // 计算图片位置和尺寸
-      // 使用 cover 模式确保图片完全覆盖占位符
-      const imagePosition = calculateImagePosition(
-        {
-          id: imageId,
-          file,
-          src,
-          width: img.width,
-          height: img.height
-        },
-        placeholder
+      const fit = calculateImageFit(
+        img.width,
+        img.height,
+        placeholder.width,
+        placeholder.height
       );
 
-      // 创建新图片对象
       const newImage: Image = {
         id: imageId,
         file,
         src,
         width: img.width,
         height: img.height,
-        x: imagePosition.x,
-        y: imagePosition.y,
-        scale: imagePosition.scale,
+        x: placeholder.x,
+        y: placeholder.y,
+        scale: fit.scale,
         rotation: placeholder.rotation,
-        zIndex: 10 + state.images.length // 确保图片在占位符之上
+        zIndex: placeholder.zIndex,
+        placeholderId: placeholderId,
+        offsetX: fit.offsetX,
+        offsetY: fit.offsetY,
       };
 
-      // 添加图片到状态
       addImageWithPosition(newImage);
 
       return {
@@ -95,9 +93,6 @@ export class ImageUploadUseCase {
     }
   }
 
-  /**
-   * 读取文件为DataURL
-   */
   private readFileAsDataURL(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -112,9 +107,6 @@ export class ImageUploadUseCase {
     });
   }
 
-  /**
-   * 加载图片以获取尺寸
-   */
   private loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -129,20 +121,13 @@ export class ImageUploadUseCase {
   }
 }
 
-/**
- * 处理图片变换的业务逻辑
- */
 export class ImageTransformUseCase {
-  /**
-   * 计算变换后的图片状态
-   */
   execute(imageId: string, node: any, state: AppState): Partial<Image> {
     const originalImage = state.images.find(img => img.id === imageId);
     if (!originalImage) {
       return {};
     }
 
-    // 直接使用 node 的 scaleX 属性
     const newScale = node.scaleX();
 
     return {

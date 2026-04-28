@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import { getTemplateById } from '../utils/templates';
 
 export const useExport = () => {
   const { state } = useApp();
@@ -27,6 +28,10 @@ export const useExport = () => {
       ctx.stroke();
     }
 
+    // 获取模板信息用于计算绑定图片的位置
+    const template = state.selectedTemplateId ? getTemplateById(state.selectedTemplateId) : null;
+    const placeholders = template?.placeholders || [];
+
     const imagesToLoad = state.images.length;
     let loadedCount = 0;
 
@@ -35,7 +40,33 @@ export const useExport = () => {
       image.crossOrigin = 'anonymous';
       image.onload = () => {
         ctx.save();
-        ctx.translate(img.x + (img.width * img.scale) / 2, img.y + (img.height * img.scale) / 2);
+        
+        // 计算图片中心位置
+        let centerX: number;
+        let centerY: number;
+        
+        if (img.placeholderId) {
+          // 绑定图片：基于占位符中心计算
+          const placeholder = placeholders.find(p => p.id === img.placeholderId);
+          if (placeholder) {
+            centerX = placeholder.x + placeholder.width / 2 + (img.offsetX || 0);
+            centerY = placeholder.y + placeholder.height / 2 + (img.offsetY || 0);
+            
+            // 设置裁剪区域（只显示占位符内的部分）
+            ctx.beginPath();
+            ctx.rect(placeholder.x, placeholder.y, placeholder.width, placeholder.height);
+            ctx.clip();
+          } else {
+            centerX = img.x;
+            centerY = img.y;
+          }
+        } else {
+          // 自由图片：直接使用图片位置
+          centerX = img.x;
+          centerY = img.y;
+        }
+        
+        ctx.translate(centerX, centerY);
         ctx.rotate((img.rotation * Math.PI) / 180);
         ctx.scale(img.scale, img.scale);
         ctx.drawImage(image, -img.width / 2, -img.height / 2);

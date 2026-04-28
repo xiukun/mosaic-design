@@ -41,6 +41,15 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
           img.id === action.payload.id ? { ...img, ...action.payload } : img
         ),
       };
+    case 'SET_CANVAS_SIZE':
+      return {
+        ...state,
+        canvasConfig: {
+          ...state.canvasConfig,
+          width: action.payload.width,
+          height: action.payload.height,
+        },
+      };
     case 'SET_CANVAS_CONFIG':
       return {
         ...state,
