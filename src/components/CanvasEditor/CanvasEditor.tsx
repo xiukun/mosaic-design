@@ -136,7 +136,6 @@ const CanvasEditor: React.FC = () => {
   const baseHeight = canvasConfig.height;
   const containerWidth = Math.min(800, baseWidth * 1.2);
   const scale = containerWidth / baseWidth;
-  const containerHeight = baseHeight * scale * 1.2;
 
   const template = state.selectedTemplateId ? getTemplateById(state.selectedTemplateId) : null;
   const placeholders = template?.placeholders || [];
@@ -149,43 +148,54 @@ const CanvasEditor: React.FC = () => {
       <div className="relative w-full max-w-5xl">
         <div className="absolute -inset-12 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-pink-500/10 rounded-3xl -z-10 blur-2xl" />
         <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-slate-200/50 ring-1 ring-slate-100">
+          {/* 工具栏放在滚动容器外面，避免被遮挡 */}
+          {state.selectedImageId && (() => {
+            const selectedImage = images.find(img => img.id === state.selectedImageId);
+            if (selectedImage) {
+              const placeholder = selectedImage.placeholderId 
+                ? placeholders.find(p => p.id === selectedImage.placeholderId) 
+                : null;
+              const renderX = placeholder 
+                ? placeholder.x + (selectedImage.offsetX || 0) 
+                : selectedImage.x;
+              const renderY = placeholder 
+                ? placeholder.y + (selectedImage.offsetY || 0) 
+                : selectedImage.y;
+              const toolbarX = renderX * scale + 20;
+              const toolbarY = renderY * scale + 20;
+              return (
+                <div 
+                  className="absolute z-50"
+                  style={{ 
+                    left: toolbarX, 
+                    top: toolbarY,
+                    transform: 'translate(-50%, -100%)',
+                    marginTop: '-8px'
+                  }}
+                >
+                  <ImageToolbar image={selectedImage} />
+                </div>
+              );
+            }
+            return null;
+          })()}
           <div className="relative" style={{ 
             width: containerWidth,
-            height: containerHeight,
             maxWidth: '100%',
             maxHeight: '85vh',
             overflow: 'auto',
-            padding: '40px'
+            padding: '20px'
           }}>
-            {state.selectedImageId && (() => {
-              const selectedImage = images.find(img => img.id === state.selectedImageId);
-              if (selectedImage) {
-                const placeholder = selectedImage.placeholderId 
-                  ? placeholders.find(p => p.id === selectedImage.placeholderId) 
-                  : null;
-                const renderX = placeholder 
-                  ? placeholder.x + (selectedImage.offsetX || 0) 
-                  : selectedImage.x;
-                const renderY = placeholder 
-                  ? placeholder.y + (selectedImage.offsetY || 0) 
-                  : selectedImage.y;
-                return (
-                  <div style={{ position: 'absolute', zIndex: 100, left: renderX * scale + containerWidth * 0.1, top: renderY * scale + containerHeight * 0.1 }}>
-                    <ImageToolbar image={selectedImage} />
-                  </div>
-                );
-              }
-              return null;
-            })()}
-            <Stage
-              width={baseWidth * scale}
-              height={baseHeight * scale}
-              scaleX={scale}
-              scaleY={scale}
-              onClick={handleStageClick}
-              className="rounded-2xl shadow-2xl"
-              overflow="visible"
-            >
+            <div className="flex justify-center">
+              <Stage
+                width={baseWidth * scale}
+                height={baseHeight * scale}
+                scaleX={scale}
+                scaleY={scale}
+                onClick={handleStageClick}
+                className="rounded-2xl shadow-2xl"
+                overflow="visible"
+              >
               <Layer>
                 <Rect
                   x={0}
@@ -262,13 +272,12 @@ const CanvasEditor: React.FC = () => {
                   const maxRadius = Math.min(scaledWidth, scaledHeight) / 2;
                   const cornerRadius = (borderRadiusPercent / 100) * maxRadius;
                   
-                  // 设置旋转中心为图片中心
                   const offsetX = img.width / 2;
                   const offsetY = img.height / 2;
                   
-                  // 计算图片在裁剪区域内的位置
-                  const imageCenterX = placeholder.x + placeholder.width / 2 + (img.offsetX || 0);
-                  const imageCenterY = placeholder.y + placeholder.height / 2 + (img.offsetY || 0);
+                  // 计算图片位置：使用图片的 x, y 加上偏移量（offsetX/Y 是负值，用于居中）
+                  const imageCenterX = placeholder.x + placeholder.width / 2;
+                  const imageCenterY = placeholder.y + placeholder.height / 2;
                   
                   return (
                     <Group
@@ -290,8 +299,8 @@ const CanvasEditor: React.FC = () => {
                         scaleX={img.scale}
                         scaleY={img.scale}
                         rotation={img.rotation}
-                        offsetX={offsetX}
-                        offsetY={offsetY}
+                        offsetX={offsetX + (img.offsetX || 0)}
+                        offsetY={offsetY + (img.offsetY || 0)}
                         draggable={true}
                         onClick={(e) => handleImageClick(e, img.id)}
                         onDragMove={(e) => handleBoundImageDragMove(e, img, placeholder)}
@@ -348,6 +357,7 @@ const CanvasEditor: React.FC = () => {
                 />
               </Layer>
             </Stage>
+            </div>
           </div>
         </div>
       </div>

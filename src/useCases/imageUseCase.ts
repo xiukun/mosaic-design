@@ -27,10 +27,16 @@ const calculateImageFit = (
   const scaleY = placeholderHeight / imageHeight;
   const scale = Math.max(scaleX, scaleY);
 
+  const scaledWidth = imageWidth * scale;
+  const scaledHeight = imageHeight * scale;
+
+  const offsetX = (placeholderWidth - scaledWidth) / 2;
+  const offsetY = (placeholderHeight - scaledHeight) / 2;
+
   return {
     scale,
-    offsetX: 0,
-    offsetY: 0,
+    offsetX,
+    offsetY,
   };
 };
 

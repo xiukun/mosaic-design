@@ -53,31 +53,24 @@ const ImageToolbar: React.FC<ImageToolbarProps> = ({ image }) => {
   };
 
   return (
-    <div
-      className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-20"
-      style={{
-        top: '-56px'
-      }}
-    >
-      <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 px-2 py-1.5">
-        <button
-          onClick={handleRotate}
-          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-700 hover:text-slate-900"
-          title="旋转"
-        >
-          <span className="text-lg">⟳</span>
-        </button>
-        
-        <div className="w-px h-6 bg-slate-200"></div>
-        
-        <button
-          onClick={handleDelete}
-          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-slate-700 hover:text-red-600"
-          title="删除"
-        >
-          <span className="text-lg">✕</span>
-        </button>
-      </div>
+    <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 px-2 py-1.5 shadow-xl">
+      <button
+        onClick={handleRotate}
+        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-700 hover:text-slate-900"
+        title="旋转"
+      >
+        <span className="text-lg">⟳</span>
+      </button>
+      
+      <div className="w-px h-6 bg-slate-200"></div>
+      
+      <button
+        onClick={handleDelete}
+        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-slate-700 hover:text-red-600"
+        title="删除"
+      >
+        <span className="text-lg">✕</span>
+      </button>
     </div>
   );
 };
